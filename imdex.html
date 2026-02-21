@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Input Tester Pro</title>
+    
+    <!-- Настройки для iOS (PWA) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="InputTest">
+    
+    <!-- Ссылка на иконку (замените на свою или используйте эту временную) -->
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com">
+    
+    <style>
+        body { 
+            font-family: -apple-system, system-ui, sans-serif; 
+            background: #000; color: #0f0; 
+            padding: env(safe-area-inset-top) 20px 20px 20px; 
+            user-select: none;
+        }
+        .section { border: 1px solid #333; padding: 15px; margin-bottom: 15px; border-radius: 12px; background: #111; }
+        h2 { font-size: 12px; color: #888; text-transform: uppercase; margin-top: 0; }
+        .key-tag { display: inline-block; padding: 6px 12px; margin: 4px; background: #222; border-radius: 6px; font-family: monospace; }
+        .active { background: #0f0; color: #000; box-shadow: 0 0 15px #0f0; }
+        .axis-bar { display: inline-block; width: 100px; height: 8px; background: #333; position: relative; border-radius: 4px; }
+        .axis-val { position: absolute; height: 100%; background: #0f0; border-radius: 4px; }
+        hr { border: 0; border-top: 1px solid #222; margin: 15px 0; }
+    </style>
+</head>
+<body>
+
+    <div class="section">
+        <h2>Mouse / Touch Scroll</h2>
+        <div id="scroll-display">Прокрутите...</div>
+    </div>
+
+    <div class="section">
+        <h2>Keyboard & Volume</h2>
+        <div id="keyboard-display">Ожидание...</div>
+    </div>
+
+    <div class="section">
+        <h2>Gamepads</h2>
+        <div id="gamepad-display">Нажмите кнопку на геймпаде...</div>
+    </div>
+
+    <script>
+        // --- SCROLL ---
+        const scrollDisplay = document.getElementById('scroll-display');
+        let sTimeout;
+        window.addEventListener('wheel', (e) => {
+            scrollDisplay.innerHTML = `<span class="key-tag active">Scroll: ${e.deltaY > 0 ? 'Down' : 'Up'}</span>`;
+            clearTimeout(sTimeout);
+            sTimeout = setTimeout(() => scrollDisplay.innerText = 'Прокрутите...', 600);
+        });
+
+        // --- KEYBOARD & VOLUME ---
+        const activeKeys = new Set();
+        const kbDisplay = document.getElementById('keyboard-display');
+        window.addEventListener('keydown', (e) => {
+            activeKeys.add(e.code || e.key);
+            renderKB();
+        });
+        window.addEventListener('keyup', (e) => {
+            activeKeys.delete(e.code || e.key);
+            renderKB();
+        });
+        function renderKB() {
+            kbDisplay.innerHTML = activeKeys.size ? 
+                Array.from(activeKeys).map(k => `<span class="key-tag active">${k}</span>`).join('') : 'Ожидание...';
+        }
+
+        // --- GAMEPAD ---
+        const gpDisplay = document.getElementById('gamepad-display');
+        function updateGP() {
+            const gps = navigator.getGamepads();
+            let html = '';
+            for (const gp of gps) {
+                if (!gp) continue;
+                html += `<div><small>${gp.id.substring(0,20)}...</small><br>`;
+                gp.buttons.forEach((b, i) => {
+                    if(b.pressed) html += `<span class="key-tag active">B${i}</span> `;
+                });
+                html += '<br>';
+                gp.axes.forEach((a, i) => {
+                    const w = (a + 1) * 50;
+                    html += `Axis ${i}: <div class="axis-bar"><div class="axis-val" style="width:${w}%"></div></div><br>`;
+                });
+                html += '</div><hr>';
+            }
+            if(html) gpDisplay.innerHTML = html;
+            requestAnimationFrame(updateGP);
+        }
+        window.addEventListener("gamepadconnected", updateGP);
+        updateGP();
+    </script>
+</body>
+</html>
