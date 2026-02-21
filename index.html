@@ -45,8 +45,28 @@
         <h2>Gamepads</h2>
         <div id="gamepad-display">Нажмите кнопку на геймпаде...</div>
     </div>
-
+    <!-- Скрытое поле для перехвата фокуса клавиатуры -->
+    <input type="text" id="kb-focus" style="position:absolute; opacity:0; pointer-events:none;">
+    <button id="activate-kb" style="width:100%; padding:15px; background:#0088ff; color:white; border:none; border-radius:10px; margin-bottom:10px;">
+        Нажмите здесь, чтобы включить клавиатуру
+    </button>
     <script>
+        const focusInput = document.getElementById('kb-focus');
+        const activateBtn = document.getElementById('activate-kb');
+
+        // При клике на кнопку переводим фокус на скрытый input
+        activateBtn.addEventListener('click', () => {
+            focusInput.focus();
+            activateBtn.innerText = "Клавиатура активна (в фокусе)";
+            activateBtn.style.background = "#222";
+        });
+
+        // Слушаем нажатия теперь и через Input
+        focusInput.addEventListener('keydown', (e) => {
+            activeKeys.add(e.code || e.key);
+            renderKB();
+        });
+        // (Оставьте остальные обработчики keydown на window для ПК)
         // --- SCROLL ---
         const scrollDisplay = document.getElementById('scroll-display');
         let sTimeout;
