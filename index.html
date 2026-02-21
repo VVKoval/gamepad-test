@@ -46,7 +46,10 @@
         <div id="gamepad-display">Нажмите кнопку на геймпаде...</div>
     </div>
     <!-- Скрытое поле для перехвата фокуса клавиатуры -->
-    <input type="text" id="kb-focus" style="position:absolute; opacity:0; pointer-events:none;">
+    <!-- inputmode="none" предотвращает появление экранной клавиатуры на iOS -->
+    <input type="text" id="kb-focus" 
+           inputmode="none" 
+           style="position:fixed; top:-100px; left:-100px; width:1px; height:1px; opacity:0;">
     <button id="activate-kb" style="width:100%; padding:15px; background:#0088ff; color:white; border:none; border-radius:10px; margin-bottom:10px;">
         Нажмите здесь, чтобы включить клавиатуру
     </button>
@@ -57,8 +60,9 @@
         // При клике на кнопку переводим фокус на скрытый input
         activateBtn.addEventListener('click', () => {
             focusInput.focus();
-            activateBtn.innerText = "Клавиатура активна (в фокусе)";
-            activateBtn.style.background = "#222";
+            // Дополнительный хак для iOS: иногда нужно "перефокусировать"
+            setTimeout(() => focusInput.focus(), 100); 
+            activateBtn.innerText = "Клавиатура готова (физическая)";
         });
 
         // Слушаем нажатия теперь и через Input
