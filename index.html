@@ -2,123 +2,103 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Input Tester Pro</title>
-    
-    <!-- Настройки для iOS (PWA) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="InputTest">
-    
-    <!-- Ссылка на иконку (замените на свою или используйте эту временную) -->
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com">
-    
+    <link rel="manifest" href="manifest.json">
     <style>
-        body { 
-            font-family: -apple-system, system-ui, sans-serif; 
-            background: #000; color: #0f0; 
-            padding: env(safe-area-inset-top) 20px 20px 20px; 
-            user-select: none;
-        }
+        body { font-family: -apple-system, sans-serif; background: #000; color: #0f0; padding: env(safe-area-inset-top) 20px 40px; user-select: none; }
         .section { border: 1px solid #333; padding: 15px; margin-bottom: 15px; border-radius: 12px; background: #111; }
-        h2 { font-size: 12px; color: #888; text-transform: uppercase; margin-top: 0; }
-        .key-tag { display: inline-block; padding: 6px 12px; margin: 4px; background: #222; border-radius: 6px; font-family: monospace; }
+        h2 { font-size: 11px; color: #888; text-transform: uppercase; margin: 0 0 10px; }
+        .key-tag { display: inline-block; padding: 6px 12px; margin: 4px; background: #222; border-radius: 6px; font-family: monospace; font-size: 13px; transition: 0.1s; }
         .active { background: #0f0; color: #000; box-shadow: 0 0 15px #0f0; }
-        .axis-bar { display: inline-block; width: 100px; height: 8px; background: #333; position: relative; border-radius: 4px; }
+        .axis-bar { display: inline-block; width: 120px; height: 8px; background: #333; position: relative; border-radius: 4px; vertical-align: middle; }
         .axis-val { position: absolute; height: 100%; background: #0f0; border-radius: 4px; }
-        hr { border: 0; border-top: 1px solid #222; margin: 15px 0; }
+        #kb-focus { position: fixed; top: -100px; left: -100px; width: 1px; height: 1px; opacity: 0; }
+        .btn-act { width: 100%; padding: 18px; background: #0088ff; color: #fff; border: none; border-radius: 14px; font-weight: bold; font-size: 16px; margin-bottom: 20px; -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
 <body>
 
+    <button id="activate-kb" class="btn-act">Включить физическую клавиатуру</button>
+    <input type="text" id="kb-focus" inputmode="none">
+
     <div class="section">
-        <h2>Mouse / Touch Scroll</h2>
-        <div id="scroll-display">Прокрутите...</div>
+        <h2>Scroll & Wheel</h2>
+        <div id="scroll-display">Ожидание...</div>
     </div>
 
     <div class="section">
-        <h2>Keyboard & Volume</h2>
+        <h2>Keyboard / Volume Keys</h2>
         <div id="keyboard-display">Ожидание...</div>
     </div>
 
     <div class="section">
         <h2>Gamepads</h2>
-        <div id="gamepad-display">Нажмите кнопку на геймпаде...</div>
+        <div id="gamepad-display">Нажмите любую кнопку...</div>
     </div>
-    <!-- Скрытое поле для перехвата фокуса клавиатуры -->
-    <!-- inputmode="none" предотвращает появление экранной клавиатуры на iOS -->
-    <input type="text" id="kb-focus" 
-           inputmode="none" 
-           style="position:fixed; top:-100px; left:-100px; width:1px; height:1px; opacity:0;">
-    <button id="activate-kb" style="width:100%; padding:15px; background:#0088ff; color:white; border:none; border-radius:10px; margin-bottom:10px;">
-        Нажмите здесь, чтобы включить клавиатуру
-    </button>
+
     <script>
+        const activeKeys = new Set();
+        const kbDisplay = document.getElementById('keyboard-display');
+        const scrollDisplay = document.getElementById('scroll-display');
+        const gpDisplay = document.getElementById('gamepad-display');
         const focusInput = document.getElementById('kb-focus');
         const activateBtn = document.getElementById('activate-kb');
 
-        // При клике на кнопку переводим фокус на скрытый input
-        activateBtn.addEventListener('click', () => {
+        // Кнопка фокуса
+        activateBtn.onclick = () => {
             focusInput.focus();
-            // Дополнительный хак для iOS: иногда нужно "перефокусировать"
-            setTimeout(() => focusInput.focus(), 100); 
-            activateBtn.innerText = "Клавиатура готова (физическая)";
-        });
+            setTimeout(() => focusInput.focus(), 150);
+            activateBtn.innerText = "Клавиатура в фокусе ✅";
+            activateBtn.style.background = "#1a1a1a";
+        };
 
-        // Слушаем нажатия теперь и через Input
-        focusInput.addEventListener('keydown', (e) => {
-            activeKeys.add(e.code || e.key);
-            renderKB();
-        });
-        // (Оставьте остальные обработчики keydown на window для ПК)
-        // --- SCROLL ---
-        const scrollDisplay = document.getElementById('scroll-display');
-        let sTimeout;
-        window.addEventListener('wheel', (e) => {
-            scrollDisplay.innerHTML = `<span class="key-tag active">Scroll: ${e.deltaY > 0 ? 'Down' : 'Up'}</span>`;
-            clearTimeout(sTimeout);
-            sTimeout = setTimeout(() => scrollDisplay.innerText = 'Прокрутите...', 600);
-        });
+        // Клавиатура
+        const handleKey = (e, isDown) => {
+            const key = e.code || e.key;
+            isDown ? activeKeys.add(key) : activeKeys.delete(key);
+            kbDisplay.innerHTML = activeKeys.size ? Array.from(activeKeys).map(k => `<span class="key-tag active">${k}</span>`).join('') : 'Ожидание...';
+        };
+        window.onkeydown = focusInput.onkeydown = (e) => handleKey(e, true);
+        window.onkeyup = focusInput.onkeyup = (e) => handleKey(e, false);
 
-        // --- KEYBOARD & VOLUME ---
-        const activeKeys = new Set();
-        const kbDisplay = document.getElementById('keyboard-display');
-        window.addEventListener('keydown', (e) => {
-            activeKeys.add(e.code || e.key);
-            renderKB();
-        });
-        window.addEventListener('keyup', (e) => {
-            activeKeys.delete(e.code || e.key);
-            renderKB();
-        });
-        function renderKB() {
-            kbDisplay.innerHTML = activeKeys.size ? 
-                Array.from(activeKeys).map(k => `<span class="key-tag active">${k}</span>`).join('') : 'Ожидание...';
-        }
+        // Скролл
+        let sT;
+        window.onwheel = (e) => {
+            scrollDisplay.innerHTML = `<span class="key-tag active">Scroll ${e.deltaY > 0 ? 'Down' : 'Up'}</span>`;
+            clearTimeout(sT);
+            sT = setTimeout(() => scrollDisplay.innerText = 'Ожидание...', 700);
+        };
 
-        // --- GAMEPAD ---
-        const gpDisplay = document.getElementById('gamepad-display');
+        // Геймпад
         function updateGP() {
             const gps = navigator.getGamepads();
-            let html = '';
+            let h = '';
             for (const gp of gps) {
                 if (!gp) continue;
-                html += `<div><small>${gp.id.substring(0,20)}...</small><br>`;
-                gp.buttons.forEach((b, i) => {
-                    if(b.pressed) html += `<span class="key-tag active">B${i}</span> `;
-                });
-                html += '<br>';
+                h += `<div><small>${gp.id.slice(0,25)}</small><br><br>`;
+                gp.buttons.forEach((b, i) => { if(b.pressed) h += `<span class="key-tag active">B${i}</span> `; });
+                h += '<br><br>';
                 gp.axes.forEach((a, i) => {
                     const w = (a + 1) * 50;
-                    html += `Axis ${i}: <div class="axis-bar"><div class="axis-val" style="width:${w}%"></div></div><br>`;
+                    h += `Axis ${i}: <div class="axis-bar"><div class="axis-val" style="width:${w}%"></div></div> ${a.toFixed(2)}<br>`;
                 });
-                html += '</div><hr>';
+                h += '</div><hr style="border:0; border-top:1px solid #222; margin:15px 0;">';
             }
-            if(html) gpDisplay.innerHTML = html;
+            if(h) gpDisplay.innerHTML = h;
             requestAnimationFrame(updateGP);
         }
-        window.addEventListener("gamepadconnected", updateGP);
         updateGP();
+
+        // Service Worker для Offline
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').then(() => {
+                console.log('PWA Ready');
+            });
+        }
     </script>
 </body>
 </html>
